@@ -49,6 +49,9 @@ In policy iteration there is no max operator and thus the problem becomes linear
 
 \textbf{Generalized Policy Iteration (GPI)} is a term used to describe the concept of letting the policy evaluation and policy improvement processes interact. The policy is improved with respect yo the value function, thus being a locally greedy policy, and the value function is driven towards the value function of the policy. This is the case for almost all reinforcement learning algorithms. See \Cref{fig:gpi} for an illustration.
 
+Value iteration and policy iteration thus pushes eachother in order to get a good result.
+
+
 \begin{figure}[h]
     \centering
         \includegraphics[width=0.8\textwidth]{figures/solving/GPI.PNG}\\
@@ -66,7 +69,11 @@ Dynamic programming is often used in model based solvers. Dynamic programming ca
     \item Overlapping subproblems: Subproblems recur many times. Solutions can be cached an reused, as you do in e.g. value iteration, where the temporary value function is stored. 
 \end{itemize}
 
-MDPs satisfy both these properties, as the Bellman equations give recursive decomposition, i. e. optimal substructure, and the value function stores and reuses solutions. Again, this is assuming full knowledge of the MDP.
+MDPs satisfy both these properties, as the Bellman equations give recursive decomposition, i. e. optimal substructure, and the value function stores and reuses solutions. Again, this is assuming full knowledge of the MDP, as we have in Value Iteration and Policy Iteration.
+
+
+\textbf{Note}: Sychronous vs asyncronous: updating only some of the states, not the full state space (partiall sweeps).
+
 
 \subsection{Reinforcement learning and MDPS}
 Reinforcement learning is a way to solve problems described as MDPs, when
@@ -91,7 +98,7 @@ Another aspect of the model free solutions is the temporal credit assignment pro
 
 \subsubsection{Online RL}
 
-Online RL is the class of RL algorithms that interact with the environment and update their estimates after each experience. Here the concept of \textbf{exploration vs exploitation} is introduced, which is the concept of choosing a different action than the action that is best according to your current estimate.
+Online RL is the class of RL algorithms that interact with the environment and update their estimates after each experience. Here the concept of \textbf{exploration vs exploitation} is introduced, which is the concept of choosing a different action than the action that is best according to your current estimate. It is often wise to have a higher exploration rate in the beginning.
 
 \subsubsection{Temporal difference learning}
 
@@ -110,7 +117,6 @@ TD(0) Does the job of predicting the value of the next step by estimating the va
 
 
 The part $\gamma V_k(s') - V_k(s)$ tells the agent how much it improved by going from state $s$ to $s'$. The backup is performed \textit{after} experiencing the transition from state $s$ to $s'$ based on action $a$ and reward given, $r$.
-
 
 \subsubsection{Q-learning}
 
@@ -153,3 +159,83 @@ Instead of the max function to find the best estimated action, the action is cho
         \includegraphics[width=0.5\textwidth]{figures/solving/sarsa_q.PNG}\\
         \caption{Difference between Q-learning and SARSA. $\pi$ is the $\epsilon$-greedy policy, while $\mu$ is a greedy policy.}
 \end{figure}
+
+\subsubsection{Monte Carlo}
+
+Different class of methods that solves these types of problems in a different manner (det var alt han sa i forelesning).
+
+
+\subsection{Policy Gradient Methods}
+
+\subsubsection{From policy iteration to policy search}
+
+Weakness of policy iteration: policies are learned via value functions. Improving the estimate of the value function does not \textbf{necessarily} contribute to improving the policy. Also, a small change in value functions can cause a big difference in policy, which can be very problematic in physical systems s. a. robots. Also, policy improvement (maxiimizing Q) is computationally expensive when the action space A is continous.
+
+\textbf{Policy search overcome these weaknesses}. In policy search, we directly find the policy that maximizes the expected return:
+
+\begin{align}
+    \pi^* = \max_{\pi} \mathbf{E}[R]
+\end{align}
+
+Policy search addresses the issue of finding a good policy function in a vast function space. 
+
+\textbf{Challenges in policy search}: High varience, instabilities, etc.
+
+\subsubsection{Parameterized policy}
+
+We consider methods that learn a parameterized policy without consulting a value function. A value function may still be used to learn the policy parameter, but is not required for action selection. The policy parameter vector is denoted 
+
+\begin{align}
+    \theta \in \mathbf{R}^{d'}
+\end{align}
+
+The probability of action $a$ at time $t$ given environment state $s_t$ with parameter vector $\theta$ is given by
+
+\begin{align}
+    \pi(a|s, \theta) = P\{A_t = a| S_t = s, \theta_t = \theta\}
+\end{align}
+
+\subsubsection{Objective and optimization}
+
+In order to maximize performance, policy gradient methods do gradient ascent steps:
+
+\begin{align}
+    \theta_{t+1} = \theta_t + \alpha \widehat{\nabla J(\theta_k)}
+\end{align}
+
+where $\widehat{\nabla J(\theta_k)}$ is a stochastic estimate whose expectation approximates the gradient of the performance measure w. r. t. $\theta$. \textbf{All methods that follow this schema are called policy gradient methods, whether or not they learn an approximate value function}. Methods that learn both policy and value functions are called \textbf{actor-critic methods}.
+
+The policy can be parameterized by any means, e.g. deep neural nets, as long as $\pi(a|s, \theta)$ is differentiable w.r.t $\theta$. If the action space is discrete and not too large, we can form parameterized numerical preferences $h(s, a, \theta)$ for each state-action pair. The actions with the highest preferences in each state are then given the highest probabilites, e. g. by a softmax-function:
+
+\begin{align}
+    \pi(a|s, \theta) = \frac{e^{h(s, a, \theta}}{\sum_b e^{h(s, b, \theta}}
+\end{align}
+
+\subsubsection{The policy gradient theorem}
+
+How much does the expected return increase, for each small change in our policy? 
+
+The policy gradient theorem tells us how we can estimate the performance change with respect to the policy parameter, when the gradient depends on the unknown effect of policy changes on the state distribution. It also gives convergence guarantees that are stronger than for action-value-methods such as $\epsilon$-greedy action selection. 
+
+\begin{align}
+    \nabla J(\theta) \propto \sum_s \mu(s) \sum_a \nabla \pi(a|s)Q(s, a)
+\end{align}
+
+where $\mu(s)$ is the on-policy state distribution under $\pi$, mgiving a weight that symbolizes how often a state occur under the target policy $\pi$.
+
+\subsubsection{REINFORCE: Monte-Carlo Policy Gradient}
+
+\begin{figure}[h]
+    \centering
+        \includegraphics[width=0.9\textwidth]{figures/solving/policy_gradient/reinforce.PNG}\\
+        \caption{The policy-gradient method REINFORCE. G denotes the expected return.}
+        \label{fig:gpi}
+\end{figure}
+
+\textbf{Drawbacks of the reinforce algorithm}:
+\begin{itemize}
+    \item Full episodes are required before starting to train. Might be OK for short experiments, but for others it is a big problem.
+    \item The high gradient varience.
+    \item Exploration: It is possible to converge to a locally-optimal policy and to stop exploring. In DQN this is solved via $\epsilon$-greedy action selection, and there are ways to cope with this in policy-gradient methods as well.
+\end{itemize}
+
